@@ -218,7 +218,23 @@ function App(){
  <header><div class="wrap"><div class="top"><a class="logo" href="#home"><i>⚽</i>KOORA <b>MAX</b></a>
   <div class="search"><span>🔍</span><input placeholder="ابحث عن فريق أو مباراة..." value=${q} onInput=${e=>{setQ(e.target.value);if(h!=='home'&&h!=='live'&&h!=='schedule')location.hash='home'}}/></div></div>
   <nav>${nav.map(([k,t])=>html`<a key=${k} href=${'#'+k} class=${cur===k?'on':''}>${t}</a>`)}</nav></div></header>
- <main class="wrap">${page}</main>
+ <main class="wrap">
+${page}
+
+<section style="margin:25px 0">
+  <h2 style="color:#fff;margin-bottom:15px">📺 KOORA MAX TV</h2>
+  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+    ${Array.from({length:8},(_,i)=>html`
+      <div style="background:#111c2b;border:1px solid #26364b;border-radius:14px;padding:20px;text-align:center">
+        <div style="font-size:30px">⚽</div>
+        <strong style="color:#fff">KOORA MAX</strong>
+        <div style="color:#aaa;font-size:12px;margin-top:8px">قناة رياضية ${i+1}</div>
+        <div style="color:#f66;font-size:12px;margin-top:10px">لا يوجد بث متاح حالياً</div>
+      </div>
+    `)}
+  </div>
+</section>
+</main>
  <footer><div class="wrap">© 2026 KOORA MAX — جميع الأوقات بتوقيت المغرب (Africa/Casablanca) — موقع تجريبي</div></footer></div>`;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
