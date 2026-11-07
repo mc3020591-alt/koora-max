@@ -146,6 +146,15 @@ function MatchPage({m}){
  <div class="row"><div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div><div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div><div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div></div></div>
  <div style=${{marginTop:14}}><${Player} src=${src}/></div>
  ${m.sources.length>1&&html`<div class="srcs">${m.sources.map((s,i)=>html`<button key=${i} class=${'pill'+(i===si?' on':'')} onClick=${()=>setSi(i)}>${s.name}</button>`)}</div>`}
+ ${m.lg==='BOT'&&html`
+<section style="margin:18px 0;background:#111c2b;padding:18px;border-radius:14px;text-align:center">
+<h2 style="color:white">⚽ KOORA MAX TV</h2>
+<div style="color:white;margin:15px">Arryadia – الرياضية المغربية</div>
+<a href="https://snrtlive.ma/ar/arryadia" target="_blank" rel="noopener noreferrer" style="display:inline-block;background:#16a34a;color:white;padding:12px 25px;border-radius:10px;text-decoration:none;font-weight:bold">
+شاهد الرياضية مباشرة
+</a>
+</section>
+`}
  <div class="panel"><h2 style=${{marginTop:0}}>معلومات المباراة</h2><div class="info">
  <div><small>البطولة</small>${LN(m.lg).ar} · ${LN(m.lg).en}</div><div><small>التاريخ</small>${fmtD(m.t)}</div><div><small>التوقيت (المغرب)</small>${fmtT(m.t)}</div><div><small>الملعب</small>${m.venue||'—'}</div><div><small>الحالة</small>${STAT[m.st]}</div></div>
  ${m.demo&&html`<p style=${{color:'var(--mut)',fontSize:12,marginTop:12}}>مباراة تجريبية للعرض فقط وليست حقيقية. لا تُعرض إلا مصادر بث مرخّصة.</p>`}</div></div>`;
@@ -219,16 +228,7 @@ function App(){
   <div class="search"><span>🔍</span><input placeholder="ابحث عن فريق أو مباراة..." value=${q} onInput=${e=>{setQ(e.target.value);if(h!=='home'&&h!=='live'&&h!=='schedule')location.hash='home'}}/></div></div>
   <nav>${nav.map(([k,t])=>html`<a key=${k} href=${'#'+k} class=${cur===k?'on':''}>${t}</a>`)}</nav></div></header>
 <main class="wrap">${page}</main>
-<section style="margin:25px 0;background:#111c2b;padding:18px;border-radius:14px;text-align:center">
-  <h2 style="color:white">⚽ KOORA MAX TV</h2>
-  <div style="color:white;margin:15px">Arryadia – الرياضية المغربية</div>
-  <a href="https://snrtlive.ma/ar/arryadia"
-     target="_blank"
-     rel="noopener noreferrer"
-     style="display:inline-block;background:#16a34a;color:white;padding:12px 25px;border-radius:10px;text-decoration:none;font-weight:bold">
-    شاهد مباشرة
-  </a>
-</section>
+
  <footer><div class="wrap">© 2026 KOORA MAX — جميع الأوقات بتوقيت المغرب (Africa/Casablanca) — موقع تجريبي</div></footer></div>`;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
