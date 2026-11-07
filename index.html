@@ -219,6 +219,16 @@ function App(){
   <div class="search"><span>🔍</span><input placeholder="ابحث عن فريق أو مباراة..." value=${q} onInput=${e=>{setQ(e.target.value);if(h!=='home'&&h!=='live'&&h!=='schedule')location.hash='home'}}/></div></div>
   <nav>${nav.map(([k,t])=>html`<a key=${k} href=${'#'+k} class=${cur===k?'on':''}>${t}</a>`)}</nav></div></header>
 <main class="wrap">${page}</main>
+<section style="margin:25px 0;background:#111c2b;padding:18px;border-radius:14px;text-align:center">
+  <h2 style="color:white">⚽ KOORA MAX TV</h2>
+  <div style="color:white;margin:15px">Arryadia – الرياضية المغربية</div>
+  <a href="https://snrtlive.ma/ar/arryadia"
+     target="_blank"
+     rel="noopener noreferrer"
+     style="display:inline-block;background:#16a34a;color:white;padding:12px 25px;border-radius:10px;text-decoration:none;font-weight:bold">
+    شاهد مباشرة
+  </a>
+</section>
  <footer><div class="wrap">© 2026 KOORA MAX — جميع الأوقات بتوقيت المغرب (Africa/Casablanca) — موقع تجريبي</div></footer></div>`;
 }
 ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
