@@ -13,7 +13,7 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{background:radial-gradient(900px 400px at 80% -5%,#0f3d22 0,transparent 60%),var(--bg);color:var(--tx);font-family:Cairo,system-ui,sans-serif;min-height:100vh}
 a{color:inherit;text-decoration:none}button,input,select{font:inherit;color:inherit}
 .wrap{max-width:1100px;margin:auto;padding:0 14px}
-header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(7,9,10,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(7,9,10,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
 .top{display:flex;align-items:center;gap:14px;padding:10px 0}
 .logo{display:flex;align-items:center;gap:8px;font-weight:900;font-size:22px;letter-spacing:.5px;direction:ltr;cursor:pointer}
 .logo i{width:34px;height:34px;border-radius:50%;background:conic-gradient(from 0deg,var(--g),var(--g2),var(--g));display:grid;place-items:center;font-style:normal;color:#04140a;box-shadow:0 0 18px #16c75a66}
@@ -26,7 +26,7 @@ nav{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none
 nav a{padding:7px 16px;border-radius:99px;white-space:nowrap;color:var(--mut);font-weight:600;transition:.2s}
 nav a:hover{color:var(--tx)}nav a.on{background:var(--g);color:#04140a}
 .demo{background:#1a1a07;border-bottom:1px solid #3a3a10;color:#e6d96a;text-align:center;font-size:13px;padding:5px}
-.pills{display:flex;gap:8px;overflow-x:auto;padding:16px 0 6px;scrollbar-width:none}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);z-index:50;padding:10px 18px;border-radius:12px;font-weight:700;animation:up .3s both;max-width:90vw;text-align:center}.toast.ok{background:#0d3a21;color:#6ee79a;border:1px solid var(--g2)}.toast.err{background:#3a1212;color:#ff9a9a;border:1px solid #6b2020}input,select{font-size:16px}fieldset{border:0;padding:0;min-width:0}fieldset:disabled{opacity:.55}.spills{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.spills .pill{padding:5px 14px;font-size:13px}.pills{display:flex;gap:8px;overflow-x:auto;padding:16px 0 6px;scrollbar-width:none}
 .pill{flex:none;border:1px solid var(--line);background:var(--bg2);border-radius:99px;padding:6px 16px;cursor:pointer;transition:.2s;font-weight:600;font-size:14px}
 .pill:hover{border-color:var(--g)}.pill.on{background:var(--g);color:#04140a;border-color:var(--g)}
 h2{font-size:19px;margin:22px 0 12px;display:flex;align-items:center;gap:10px}
@@ -69,54 +69,32 @@ footer{margin-top:50px;border-top:1px solid var(--line);padding:24px 0;color:var
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div style="padding:60px 20px;text-align:center;color:#8a9c92;font-family:sans-serif">جارٍ تحميل KOORA MAX...</div></div>
 <script>window.KOORA_CONFIG={apiUrl:"/api/matches"};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
+<script>if(!window.React||!window.ReactDOM||!window.htm){document.getElementById('root').innerHTML='<div style="padding:60px 20px;text-align:center;color:#eef5f0;font-family:sans-serif;direction:rtl"><h2>KOORA MAX</h2><p style="margin:10px 0">تعذّر تحميل مكتبات الموقع. تحقق من الاتصال ثم أعد تحميل الصفحة.</p><button onclick="location.reload()" style="padding:10px 20px;border-radius:10px;border:0;background:#16c75a;font-weight:700">إعادة التحميل</button></div>'}</script>
 <script>
-const {useState,useEffect,useMemo,useRef}=React;
-const html=htm.bind(React.createElement);
+const {useState,useEffect,useMemo,useRef}=React;const html=htm.bind(React.createElement);
 const TZ='Africa/Casablanca',KEY='koora-max-v3',CFG=window.KOORA_CONFIG||{};
-
-const mapSt=s=>{
- const v=String(s||'').trim().toUpperCase();
- if(['LIVE','1H','2H','HT','ET','BT','P','INT','SUSP','IN_PLAY','PAUSED'].includes(v))return 'live';
- if(['FT','AET','PEN','FINISHED'].includes(v))return 'finished';
- return 'upcoming';
-};
-
+const mapSt=s=>/IN_PLAY|PAUSED|LIVE|1H|2H|HT|^ET$|^BT$|^P$/i.test(s||'')?'live':/FINISHED|FT|AET|PEN/i.test(s||'')?'finished':'upcoming';
 function useApi(){
  const[s,setS]=useState({state:CFG.apiUrl?'loading':'off',ms:[]});
- useEffect(()=>{
-  if(!CFG.apiUrl)return;
-  let dead=false;
-  const run=()=>fetch(CFG.apiUrl+'?from='+dayK(new Date())+'&days=3)
-   .then(r=>{if(!r.ok)throw 0;return r.json()})
-   .then(j=>{
-    if(dead)return;
-    const arr=Array.isArray(j)?j:(j.matches||[]);
-    const iso=v=>typeof v==='number'?new Date(v<1e12?v*1000:v).toISOString():v;
-    const ms=arr.map(x=>({
-     id:String(x.id),lg:lgk(x.lg),h:x.h,a:x.a,t:iso(x.t),
-     st:mapSt(x.st),min:x.min,hs:x.hs??0,as:x.as??0,
-     venue:x.venue||'',hl:x.hl,al:x.al,sources:[]
-    }));
-    setS({state:'ok',ms});
-   })
-   .catch(()=>!dead&&setS({state:'error',ms:[]}));
-  run();
-  const i=setInterval(run,6e4);
-  return()=>{dead=true;clearInterval(i)};
- },[]);
- return s;
-}
-
+ useEffect(()=>{if(!CFG.apiUrl)return;let dead=false;
+  const run=()=>fetch(CFG.apiUrl+'?from='+dayK(new Date())+'&days=3').then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{if(dead)return;
+   const arr=Array.isArray(j)?j:(j.matches||[]);
+   const iso=v=>typeof v==='number'?new Date(v<1e12?v*1000:v).toISOString():v;
+   const seen=new Map();
+   arr.forEach(x=>{if(!x||x.id==null)return;const t=iso(x.t);if(!t||isNaN(new Date(t)))return;seen.set(String(x.id),{id:String(x.id),lg:lgk(x.lg),h:String(x.h||'—'),a:String(x.a||'—'),t,st:mapSt(x.st),min:x.min,hs:+x.hs||0,as:+x.as||0,venue:x.venue||'',hl:/^https:\/\//.test(x.hl||'')?x.hl:'',al:/^https:\/\//.test(x.al||'')?x.al:'',sources:[]})});
+   const ms=[...seen.values()];
+   setS({state:'ok',ms,at:new Date().toISOString()})}).catch(()=>!dead&&setS(p=>p.ms.length?{...p,stale:true}:{state:'error',ms:[]}));
+  run();const i=setInterval(run,6e4);return()=>{dead=true;clearInterval(i)}},[]);
+ return s}
 const fmtT=i=>new Date(i).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
 const dayK=i=>new Date(i).toLocaleDateString('en-CA',{timeZone:TZ});
 const fmtD=i=>new Date(i).toLocaleDateString('ar-MA-u-nu-latn',{weekday:'long',day:'numeric',month:'long',timeZone:TZ});
-
 const LEAGUES=[
 {k:'PL',ar:'الدوري الإنجليزي',en:'Premier League',al:['english premier league','epl','الدوري الإنجليزي الممتاز','البريميرليغ']},
 {k:'PD',ar:'الدوري الإسباني',en:'La Liga',al:['laliga','primera division','الليغا']},
@@ -129,469 +107,125 @@ const LEAGUES=[
 {k:'ALG',ar:'الدوري الجزائري',en:'Algeria Ligue 1',al:['algerian ligue 1','algeria ligue professionnelle 1','الرابطة المحترفة الأولى']},
 {k:'TUN',ar:'الدوري التونسي',en:'Tunisia Ligue 1',al:['tunisian ligue 1','ligue professionnelle 1','الرابطة المحترفة التونسية']},
 {k:'EGY',ar:'الدوري المصري',en:'Egyptian Premier League',al:['egypt premier league','الدوري المصري الممتاز']},
-{k:'CAF',ar:'دوري أبطال إفريقيا',en:'CAF Champions League',al:['champions league caf','african champions league','دوري أبطال أفريقيا']}
-];
-
+{k:'CAF',ar:'دوري أبطال إفريقيا',en:'CAF Champions League',al:['champions league caf','african champions league','دوري أبطال أفريقيا']}];
 const LGID={39:'PL',140:'PD',135:'SA',78:'BL1',61:'FL1',2:'CL',200:'BOT',307:'SPL',186:'ALG',202:'TUN',233:'EGY',12:'CAF'};
-const nz=v=>String(v==null?'':v).toLowerCase().normalize('NFKD')
- .replace(/[\u0300-\u036f\u064B-\u065F\u0670\u0640]/g,'')
- .replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه')
- .replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-
-function lgk(v){
- const t=nz(v);
- if(!t)return v;
- if(/^\d+$/.test(t)&&LGID[+t])return LGID[+t];
- let best=null,bl=0;
- for(const l of LEAGUES)for(const a of [l.k,l.en,l.ar,...l.al]){
-  const z=nz(a);
-  if(z===t)return l.k;
-  if(z.length>=5&&t.includes(z)&&z.length>bl){best=l.k;bl=z.length}
- }
- return best||v;
-}
-
+const nz=v=>String(v==null?'':v).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function lgk(v){const t=nz(v);if(!t)return v;if(/^\d+$/.test(t)&&LGID[+t])return LGID[+t];
+ let best=null,bl=0;for(const l of LEAGUES)for(const a of [l.k,l.en,l.ar,...l.al]){const z=nz(a);if(z===t)return l.k;if(z.length>=5&&t.includes(z)&&z.length>bl){best=l.k;bl=z.length}}return best||v}
 const LN=k=>LEAGUES.find(l=>l.k===k)||{ar:k,en:k};
 const STAT={live:'مباشر',upcoming:'لم تبدأ',finished:'انتهت'};
-const CHANNELS=[
- {id:'arryadia',name:'الرياضية المغربية',url:'https://snrtlive.ma/ar/arryadia'}
-];
-
 const col=n=>`hsl(${[...n].reduce((a,c)=>a*31+c.charCodeAt(0),7)%360} 55% 32%)`;
-const mk=(id,lg,h,a,off,st,venue)=>({id,lg,h,a,t:new Date(Date.now()+off*6e4).toISOString(),st,hs:0,as:0,venue,sources:[],demo:true});
+const mk=(id,lg,h,a,off,st,venue)=>({id,lg,h,a,t:new Date(Date.now()+off*6e4).toISOString(),st,hs:0,as:0,venue,sources:[],manual:true});
 const seed=()=>[];
 const load=()=>{try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()};
+const useHash=()=>{const g=()=>location.hash.slice(1)||'home';const[h,s]=useState(g);useEffect(()=>{const f=()=>{s(g());window.scrollTo(0,0)};addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);return h};
 
-const useHash=()=>{
- const g=()=>location.hash.slice(1)||'home';
- const[h,s]=useState(g);
- useEffect(()=>{
-  const f=()=>{s(g());window.scrollTo(0,0)};
-  addEventListener('hashchange',f);
-  return()=>removeEventListener('hashchange',f);
- },[]);
- return h;
-};
-
-const Badge=({n,img})=>html`
- <div class="badge" style=${{background:img?'#fff':col(n),overflow:'hidden'}}>
- ${img?html`<img src=${img} alt=${n} loading="lazy" style=${{width:'80%',height:'80%',objectFit:'contain'}} onError=${e=>{e.target.style.display='none'}}/>`:n[0]}
- </div>`;
-
-const Card=({m,i})=>html`
- <a class="card" href=${'#match-'+m.id} style=${{animationDelay:i*50+'ms'}}>
- <div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.demo&&html`<span class="tag">تجريبي</span>`}</span></div>
- <div class="row">
-  <div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div>
-  <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div><div class="st">توقيت المغرب</div>`:html`<div class="score">${m.hs} - ${m.as}</div><div class="st">${m.st==='live'?(m.min?m.min+"'":'جارية الآن'):'نهائي'}</div>`}</div>
-  <div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div>
- </div></a>`;
-
-const Section=({title,list})=>list.length?html`
- <h2>${title}</h2>
- <div class="grid">${list.map((m,i)=>html`<${Card} key=${m.id} m=${m} i=${i}/>` )}</div>`:null;
+const Badge=({n,img})=>html`<div class="badge" style=${{background:img?'#fff':col(n),overflow:'hidden'}}>${img?html`<img src=${img} alt=${n} loading="lazy" style=${{width:'80%',height:'80%',objectFit:'contain'}} onError=${e=>{e.target.style.display='none'}}/>`:n[0]}</div>`
+const Card=({m,i})=>html`<a class="card" href=${'#match-'+m.id} style=${{animationDelay:i*50+'ms'}}>
+ <div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.manual&&html`<span class="tag">يدوي</span>`}</span></div>
+ <div class="row"><div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div>
+ <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div><div class="st">توقيت المغرب</div>`:html`<div class="score">${m.hs} - ${m.as}</div><div class="st">${m.st==='live'?(m.min?m.min+"'":'جارية الآن'):'نهائي'}</div>`}</div>
+ <div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div></div></a>`;
+const Section=({title,list})=>list.length?html`<h2>${title}</h2><div class="grid">${list.map((m,i)=>html`<${Card} key=${m.id} m=${m} i=${i}/>`)}</div>`:null;
 
 function Player({src}){
  const v=useRef();
- useEffect(()=>{
-  if(!src||src.type!=='hls'||!v.current)return;
-  let h;
-  if(window.Hls&&Hls.isSupported()){
-   h=new Hls();h.loadSource(src.url);h.attachMedia(v.current);
-  }else v.current.src=src.url;
-  return()=>h&&h.destroy();
- },[src]);
- if(!src)return html`
-  <div class="player"><div><div style=${{fontSize:42}}>📺</div>
-  <p>لا يوجد مصدر بث مرخّص لهذه المباراة حالياً</p>
-  <small>يمكن للمشرف إضافة رابط من لوحة التحكم</small></div></div>`;
- return html`
-  <div class="player">
-  ${src.type==='embed'?html`<iframe src=${src.url} allowfullscreen referrerpolicy="no-referrer"/>`:
-    src.type==='mp4'?html`<video key=${src.url} src=${src.url} controls playsinline/>`:
-    html`<video ref=${v} controls playsinline/>`}
-  </div>`;
+ useEffect(()=>{if(!src||src.type!=='hls'||!v.current)return;let h;
+  if(window.Hls&&Hls.isSupported()){h=new Hls();h.loadSource(src.url);h.attachMedia(v.current)}else v.current.src=src.url;return()=>h&&h.destroy()},[src]);
+ if(!src)return html`<div class="player"><div><div style=${{fontSize:42}}>📺</div><p>لا يوجد مصدر بث مرخّص لهذه المباراة حالياً</p><small>يمكن للمشرف إضافة رابط من لوحة التحكم</small></div></div>`;
+ return html`<div class="player">${src.type==='embed'?html`<iframe src=${src.url} allowfullscreen referrerpolicy="no-referrer"/>`:src.type==='mp4'?html`<video key=${src.url} src=${src.url} controls playsinline/>`:html`<video ref=${v} controls playsinline/>`}</div>`;
 }
-
-function MatchPage({m}){
+function MatchPage({m,loading}){
  const[si,setSi]=useState(0);
+ if(!m&&loading)return html`<div class="empty">جارٍ تحميل المباراة...</div>`;
  if(!m)return html`<div class="empty">المباراة غير موجودة. <a href="#home" style=${{color:'var(--g)'}}>العودة للرئيسية</a></div>`;
- const src=m.sources?.[si]||m.sources?.[0];
- const channel=CHANNELS.find(c=>c.id===m.channel);
-
- return html`
- <div style=${{paddingTop:18,animation:'up .5s both'}}>
-  <div class="panel" style=${{marginTop:0}}>
-   <div class="meta">
-    <span>${LN(m.lg).ar}</span>
-    <span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]}</span>
-   </div>
-   <div class="row">
-    <div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div>
-    <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div>
-    <div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div>
-   </div>
-  </div>
-
-  <div style=${{marginTop:14}}><${Player} src=${src}/></div>
-
-  ${channel&&html`
-   <div class="panel" style=${{textAlign:'center'}}>
-    <h2>القناة الناقلة</h2>
-    <p>${channel.name}</p>
-    <a href=${channel.url} target="_blank" rel="noopener noreferrer" class="btn">شاهد القناة الرسمية</a>
-   </div>
-  `}
-
-  <div class="panel">
-   <h2 style=${{marginTop:0}}>معلومات المباراة</h2>
-   <div class="info">
-    <div><small>البطولة</small>${LN(m.lg).ar} · ${LN(m.lg).en}</div>
-    <div><small>التاريخ</small>${fmtD(m.t)}</div>
-    <div><small>التوقيت (المغرب)</small>${fmtT(m.t)}</div>
-    <div><small>الملعب</small>${m.venue||'—'}</div>
-    <div><small>الحالة</small>${STAT[m.st]}</div>
-   </div>
-  </div>
- </div>`;
+ const src=m.sources[si]||m.sources[0];
+ return html`<div style=${{paddingTop:18,animation:'up .5s both'}}>
+ <div class="panel" style=${{marginTop:0}}><div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.manual&&html`<span class="tag">يدوي</span>`}</span></div>
+ <div class="row"><div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div><div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div><div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div></div></div>
+ <div style=${{marginTop:14}}><${Player} src=${src}/></div>
+ <div style=${{marginTop:12}}><a class="btn ghost" href="https://snrtlive.ma/ar/arryadia" target="_blank" rel="noopener noreferrer" style=${{display:'inline-block'}}>📺 الموقع الرسمي لقناة الرياضية المغربية ↗</a><p style=${{color:'var(--mut)',fontSize:12,marginTop:6}}>يفتح الموقع الرسمي في تبويب جديد؛ هذا رابط للموقع وليس بثاً مضمّناً، وقد لا تُبث كل المباريات عليه.</p></div>
+ ${m.sources.length>1&&html`<div class="srcs">${m.sources.map((s,i)=>html`<button key=${i} class=${'pill'+(i===si?' on':'')} onClick=${()=>setSi(i)}>${s.name}</button>`)}</div>`}
+ <div class="panel"><h2 style=${{marginTop:0}}>معلومات المباراة</h2><div class="info">
+ <div><small>البطولة</small>${LN(m.lg).ar} · ${LN(m.lg).en}</div><div><small>التاريخ</small>${fmtD(m.t)}</div><div><small>التوقيت (المغرب)</small>${fmtT(m.t)}</div><div><small>الملعب</small>${m.venue||'—'}</div><div><small>الحالة</small>${STAT[m.st]}${m.st==='live'&&m.min?' • '+m.min+"'":''}</div></div>
+ ${m.manual&&html`<p style=${{color:'var(--mut)',fontSize:12,marginTop:12}}>مباراة أضافها المشرف يدوياً. لا تُعرض إلا مصادر بث مرخّصة.</p>`}</div></div>`;
 }
- function Home({ms,filter,setFilter,query}){
- const today=dayK(new Date());
- const tomorrow=dayK(new Date(Date.now()+86400000));
- const filtered=ms.filter(m=>{
-  const q=nz(query);
-  const matchQ=!q||nz(m.h+' '+m.a+' '+LN(m.lg).ar+' '+LN(m.lg).en).includes(q);
-  const matchL=filter==='all'||m.lg===filter;
-  return matchQ&&matchL;
- });
- const live=filtered.filter(m=>m.st==='live');
- const upcoming=filtered.filter(m=>m.st==='upcoming').sort((a,b)=>new Date(a.t)-new Date(b.t));
- const finished=filtered.filter(m=>m.st==='finished').sort((a,b)=>new Date(b.t)-new Date(a.t));
- const todayMs=filtered.filter(m=>dayK(m.t)===today);
- const tomorrowMs=filtered.filter(m=>dayK(m.t)===tomorrow);
-
- return html`
- <section class="hero">
-  <h1>KOORA <b>MAX</b></h1>
-  <p>كل مباريات كرة القدم في مكان واحد</p>
-  <p style=${{fontSize:12,marginTop:10}}>تابع النتائج والمواعيد والقنوات الرسمية الناقلة</p>
- </section>
-
- <div class="pills">
-  <button class=${'pill '+(filter==='all'?'on':'')} onClick=${()=>setFilter('all')}>الكل</button>
-  ${LEAGUES.map(l=>html`
-   <button key=${l.k} class=${'pill '+(filter===l.k?'on':'')} onClick=${()=>setFilter(l.k)}>${l.ar}</button>
-  `)}
- </div>
-
- ${live.length?html`<${Section} title="مباريات مباشرة" list=${live}/>`:null}
- ${todayMs.length?html`<${Section} title="مباريات اليوم" list=${todayMs.filter(m=>m.st!=='live')}/>`:null}
- ${tomorrowMs.length?html`<${Section} title="مباريات الغد" list=${tomorrowMs}/>`:null}
- ${upcoming.length?html`<${Section} title="المباريات القادمة" list=${upcoming.filter(m=>dayK(m.t)!==today&&dayK(m.t)!==tomorrow)}/>`:null}
- ${finished.length?html`<${Section} title="مباريات انتهت" list=${finished}/>`:null}
- ${!filtered.length?html`<div class="empty">لا توجد مباريات مطابقة حالياً</div>`:null}
- `;
+function Home({ms,mode,q,lg,setLg,state,stf,setStf}){
+ const today=dayK(new Date()),tom=dayK(new Date(Date.now()+864e5)),dk=m=>dayK(m.t);
+ let l=ms.filter(m=>(lg==='all'||m.lg===lg)&&(stf==='all'||m.st===stf)&&(!q||(m.h+m.a+LN(m.lg).ar+LN(m.lg).en).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>new Date(a.t)-new Date(b.t));
+ if(mode==='live')l=l.filter(m=>m.st==='live');
+ const up=l.filter(m=>m.st==='upcoming'),live=l.filter(m=>m.st==='live'),td=up.filter(m=>dk(m)<=today),tm=up.filter(m=>dk(m)===tom),lt=up.filter(m=>dk(m)>tom),fin=l.filter(m=>m.st==='finished');
+ const msg=state==='loading'?'جارٍ تحميل المباريات...':state==='error'?'تعذّر تحميل المباريات. ستتم إعادة المحاولة تلقائياً.':mode==='live'?'لا توجد مباريات مباشرة الآن':'لا توجد مباريات مطابقة';
+ return html`<div>
+ ${mode==='home'&&!q&&html`<div class="hero"><h1>تابع كل المباريات على <b>KOORA MAX</b></h1><p>جدول المباريات بتوقيت المغرب • نتائج • صفحات مباريات مخصصة</p></div>`}
+ <div class="pills">${[{k:'all',ar:'كل البطولات'},...LEAGUES].map(x=>html`<button key=${x.k} title=${x.en} class=${'pill'+(lg===x.k?' on':'')} onClick=${()=>setLg(x.k)}>${x.ar}</button>`)}</div>
+ ${mode!=='live'&&html`<div class="spills">${[['all','الكل'],['live','مباشر'],['upcoming','قادمة'],['finished','منتهية']].map(([k,t])=>html`<button key=${k} class=${'pill'+(stf===k?' on':'')} onClick=${()=>setStf(k)}>${t}</button>`)}</div>`}
+ ${q&&html`<p style=${{color:'var(--mut)',marginTop:8}}>نتائج البحث عن «${q}»: ${l.length}</p>`}
+ <${Section} title="مباريات مباشرة" list=${live}/>
+ ${mode!=='live'&&html`<${Section} title="مباريات اليوم" list=${td}/><${Section} title="مباريات الغد" list=${tm}/><${Section} title="المباريات القادمة" list=${lt}/><${Section} title="المباريات المنتهية" list=${fin}/>`}
+ ${!l.length&&html`<div class="empty">${msg}</div>`}</div>`;
 }
+function Leagues({setLg}){return html`<div><h2>البطولات</h2><div class="lg">${LEAGUES.map(x=>html`<a key=${x.k} class="card" href="#home" onClick=${()=>setLg(x.k)}>🏆<br/>${x.ar}<br/><small style=${{color:'var(--mut)'}}>${x.en}</small></a>`)}</div></div>`}
 
-function Leagues(){
- return html`
- <h2>البطولات</h2>
- <div class="lg">
- ${LEAGUES.map(l=>html`
-  <a class="card" href=${'#league-'+l.k}>
-   <div style=${{fontSize:30,marginBottom:8}}>🏆</div>
-   <div>${l.ar}</div>
-   <small style=${{color:'var(--mut)'}}>${l.en}</small>
-  </a>
- `)}
- </div>`;
+const toIn=i=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:TZ,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(i)).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`};
+const fromIn=s=>{const d=new Date(s+':00Z'),w=new Date(toIn(d)+':00Z');return new Date(d-(w-d)).toISOString()};
+function Admin({ms,setMs,api}){
+ const[ok,setOk]=useState(false),[pw,setPw]=useState(''),[toast,setToast]=useState(null),[sel,setSel]=useState(null),[ns,setNs]=useState({name:'',url:'',type:'hls'});
+ const flash=(t,k='ok')=>{setToast({t,k});setTimeout(()=>setToast(null),2500)};
+ const toastEl=toast&&html`<div class=${'toast '+toast.k}>${toast.t}</div>`;
+ if(!ok)return html`<div class="panel" style=${{maxWidth:360,margin:'30px auto'}}><h2 style=${{marginTop:0}}>دخول المشرف</h2>
+  <div class="form"><label>كلمة المرور (تجريبية: admin)<input type="password" value=${pw} onInput=${e=>setPw(e.target.value)}/></label></div>
+  <button class="btn" onClick=${()=>pw==='admin'?setOk(true):flash('كلمة المرور غير صحيحة','err')}>دخول</button>
+  <p style=${{color:'var(--mut)',fontSize:12,marginTop:10}}>تنبيه: هذا القفل للعرض فقط. عند النشر استبدله بمصادقة حقيقية من الخادم.</p>${toastEl}</div>`;
+ const upd=(id,p)=>setMs(ms.map(m=>m.id===id?{...m,...p}:m));
+ const m=ms.find(x=>x.id===sel);
+ return html`<div><h2>لوحة التحكم</h2>
+ <div class="panel" style=${{marginTop:0}}><b>مصدر البيانات:</b> ${api.state==='ok'?'متصل بمزوّد موثّق':api.state==='off'?'غير متصل (وضع تجريبي)':api.state==='loading'?'جارٍ الاتصال':'خطأ في الاتصال'}
+ <p style=${{color:'var(--mut)',fontSize:13,margin:'8px 0'}}>المباريات تُجلب من /api/matches (دالة Netlify تحفظ مفتاح API على الخادم ولا يصل للمتصفح). روابط البث المرخّصة تُحفظ في هذا المتصفح فقط؛ للإنتاج خزّنها في قاعدة بيانات.</p></div>
+ <button class="btn" onClick=${()=>{const n=mk('m'+Date.now(),'BOT','فريق أ','فريق ب',120,'upcoming','');setMs([n,...ms]);setSel(n.id);flash('تمت إضافة المباراة')}}>＋ إضافة مباراة</button>
+
+ ${m&&html`<div class="panel">${!m.manual&&html`<p style=${{color:'var(--mut)',fontSize:13,marginBottom:8}}>مباراة قادمة من API-Football: يمكنك إدارة مصادر البث فقط.</p>`}<fieldset disabled=${!m.manual}><div class="form">
+  <label>الفريق المضيف<input value=${m.h} onInput=${e=>upd(m.id,{h:e.target.value})}/></label>
+  <label>الفريق الضيف<input value=${m.a} onInput=${e=>upd(m.id,{a:e.target.value})}/></label>
+  <label>البطولة<select value=${m.lg} onChange=${e=>upd(m.id,{lg:e.target.value})}>${LEAGUES.map(x=>html`<option key=${x.k} value=${x.k}>${x.ar}</option>`)}</select></label>
+  <label>الحالة<select value=${m.st} onChange=${e=>upd(m.id,{st:e.target.value})}>${Object.entries(STAT).map(([k,v])=>html`<option key=${k} value=${k}>${v}</option>`)}</select></label>
+  <label>موعد البداية (توقيت المغرب)<input type="datetime-local" value=${toIn(m.t)} onChange=${e=>e.target.value&&upd(m.id,{t:fromIn(e.target.value)})}/></label>
+  <label>الملعب<input value=${m.venue} onInput=${e=>upd(m.id,{venue:e.target.value})}/></label>
+  <label>أهداف المضيف<input type="number" min="0" value=${m.hs} onInput=${e=>upd(m.id,{hs:+e.target.value})}/></label>
+  <label>أهداف الضيف<input type="number" min="0" value=${m.as} onInput=${e=>upd(m.id,{as:+e.target.value})}/></label></div></fieldset>
+  <h2>مصادر البث المرخّصة</h2>
+  ${m.sources.map((s,i)=>html`<div class="arow" key=${i}><span>${s.name} <small style=${{color:'var(--mut)'}}>(${s.type}) ${s.url}</small></span><button class="btn del" onClick=${()=>{upd(m.id,{sources:m.sources.filter((_,j)=>j!==i)});flash('تم حذف المصدر')}}>حذف</button></div>`)}
+  <div class="form"><label>اسم المصدر<input value=${ns.name} onInput=${e=>setNs({...ns,name:e.target.value})}/></label>
+  <label>الرابط (HTTPS)<input dir="ltr" value=${ns.url} onInput=${e=>setNs({...ns,url:e.target.value})}/></label>
+  <label>النوع<select value=${ns.type} onChange=${e=>setNs({...ns,type:e.target.value})}><option value="hls">HLS (m3u8)</option><option value="mp4">MP4</option><option value="embed">Embed (iframe)</option></select></label></div>
+  <p style=${{color:'var(--mut)',fontSize:12,marginBottom:8}}>أضف فقط روابط تملك ترخيصاً قانونياً لعرضها. تُحفظ التعديلات تلقائياً في هذا المتصفح.</p>
+  <button class="btn" onClick=${()=>{if(ns.name&&/^https:\/\//.test(ns.url)){upd(m.id,{sources:[...m.sources,ns]});setNs({name:'',url:'',type:'hls'});flash('تمت إضافة المصدر')}else flash('أدخل اسماً ورابط HTTPS صحيحاً','err')}}>إضافة مصدر</button>
+  ${m.manual&&html`<button class="btn del" style=${{marginInlineStart:8}} onClick=${()=>{setMs(ms.filter(x=>x.id!==m.id));setSel(null);flash('تم حذف المباراة')}}>حذف المباراة</button>`}</div>`}
+ <div class="panel">${ms.map(x=>html`<div class="arow" key=${x.id} onClick=${()=>setSel(x.id)}><span>${x.h} × ${x.a}</span><small style=${{color:'var(--mut)'}}>${LN(x.lg).ar} • ${fmtT(x.t)} • ${STAT[x.st]} • ${x.sources.length} مصدر</small></div>`)}</div>${toastEl}</div>`;
 }
-
-function LeaguePage({lg,ms}){
- const league=LEAGUES.find(l=>l.k===lg);
- const list=ms.filter(m=>m.lg===lg).sort((a,b)=>new Date(a.t)-new Date(b.t));
- return html`
- <h2>${league?.ar||'البطولة'}</h2>
- <p style=${{color:'var(--mut)',marginBottom:12}}>${league?.en||''}</p>
- ${list.length?html`<div class="grid">${list.map((m,i)=>html`<${Card} key=${m.id} m=${m} i=${i}/>` )}</div>`:html`<div class="empty">لا توجد مباريات لهذه البطولة حالياً</div>`}
- `;
+function App(){
+ const h=useHash(),[ms,setMs]=useState(load),[q,setQ]=useState(''),[lg,setLg]=useState('all'),api=useApi(),[stf,setStf]=useState('all');
+ const[srcMap,setSrc]=useState(()=>{try{return JSON.parse(localStorage.getItem('koora-src-v1'))||{}}catch(e){return{}}});
+ useEffect(()=>{try{localStorage.setItem('koora-src-v1',JSON.stringify(srcMap))}catch(e){}},[srcMap]);
+ const shown=[...api.ms.map(m=>({...m,sources:srcMap[m.id]||[]})),...ms.filter(m=>m.manual)];
+ const adminSet=l=>{setMs(l.filter(m=>m.manual));setSrc(Object.fromEntries(l.filter(m=>!m.manual).map(m=>[m.id,m.sources||[]])))};
+ useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(ms))}catch(e){}},[ms]);
+ const nav=[['home','الرئيسية'],['live','مباشر'],['schedule','جدول المباريات'],['leagues','البطولات'],['admin','الإدارة']];
+ const cur=h.startsWith('match-')?'':h;
+ let page;
+ if(h.startsWith('match-'))page=html`<${MatchPage} loading=${api.state==='loading'} m=${shown.find(m=>m.id===h.slice(6))}/>`;
+ else if(h==='leagues')page=html`<${Leagues} setLg=${setLg}/>`;
+ else if(h==='admin')page=html`<${Admin} ms=${shown} setMs=${adminSet} api=${api}/>`;
+ else page=html`<${Home} state=${api.state} stf=${stf} setStf=${setStf} ms=${shown} mode=${h==='live'?'live':h==='schedule'?'schedule':'home'} q=${q} lg=${lg} setLg=${setLg}/>`;
+ return html`<div>
+ ${api.state==='ok'?html`<div class="demo" style=${{background:'#06210f',color:'#6ee79a',borderColor:'#0f3d22'}}>✓ بيانات حقيقية من API-Football • التوقيت: المغرب • آخر تحديث ${fmtT(api.at)}${api.stale?' (تعذّر التحديث الأخير)':''}</div>`:html`<div class="demo">${api.state==='off'?'⚠ غير متصل بمزوّد بيانات — لا تُعرض أي مباريات حتى يتم ربط الـ API':api.state==='loading'?'جارٍ الاتصال بمصدر البيانات...':'⚠ تعذّر الاتصال بمصدر البيانات — لا تُعرض مباريات'}</div>`}
+ <header><div class="wrap"><div class="top"><a class="logo" href="#home"><i>⚽</i>KOORA <b>MAX</b></a>
+  <div class="search"><span>🔍</span><input placeholder="ابحث عن فريق أو مباراة..." value=${q} onInput=${e=>{setQ(e.target.value);if(h!=='home'&&h!=='live'&&h!=='schedule')location.hash='home'}}/></div></div>
+  <nav>${nav.map(([k,t])=>html`<a key=${k} href=${'#'+k} class=${cur===k?'on':''}>${t}</a>`)}</nav></div></header>
+ <main class="wrap">${page}</main>
+ <footer><div class="wrap">© 2026 KOORA MAX — جميع الأوقات بتوقيت المغرب (Africa/Casablanca) — موقع تجريبي</div></footer></div>`;
 }
-
-function Admin({ms,setMs,isApi,onClose}){
- const[pass,setPass]=useState('');
- const[ok,setOk]=useState(false);
- const[editing,setEditing]=useState('');
- const[showPass,setShowPass]=useState(false);
-
- const blank=()=>({
-  id:'manual-'+Date.now(),lg:'BOT',h:'',a:'',
-  t:new Date(Date.now()+3600000).toISOString(),
-  st:'upcoming',hs:0,as:0,venue:'',sources:[],channel:''
- });
-
- const[form,setForm]=useState(blank());
- const upd=(id,patch)=>{
-  setMs(list=>list.map(m=>m.id===id?{...m,...patch}:m));
- };
- const add=()=>{
-  if(!form.h.trim()||!form.a.trim())return alert('دخل اسم الفريقين');
-  setMs(list=>[...list,form]);
-  setForm(blank());
- };
- const remove=id=>{
-  if(confirm('واش متأكد من حذف المباراة؟'))setMs(list=>list.filter(m=>m.id!==id));
- };
- const edit=m=>{
-  setEditing(m.id);
-  setForm({...m,sources:m.sources||[]});
-  window.scrollTo({top:0,behavior:'smooth'});
- };
- const saveEdit=()=>{
-  setMs(list=>list.map(m=>m.id===editing?form:m));
-  setEditing('');
-  setForm(blank());
- };
- const addSource=()=>{
-  const url=prompt('دخل رابط البث المرخّص:');
-  if(!url)return;
-  if(!/^https:\/\//i.test(url))return alert('خاص الرابط يبدأ بـ https://');
-  const type=prompt('نوع المصدر: hls أو mp4 أو embed','hls');
-  if(!['hls','mp4','embed'].includes(type))return alert('النوع غير صحيح');
-  setForm(f=>({...f,sources:[...(f.sources||[]),{name:'مصدر '+((f.sources||[]).length+1),url,type}]}));
- };
-
- if(!ok)return html`
- <div class="panel" style=${{maxWidth:420,margin:'35px auto',textAlign:'center'}}>
-  <h2>لوحة الإدارة</h2>
-  <p style=${{color:'var(--mut)',marginBottom:12}}>أدخل كلمة المرور</p>
-  <input type=${showPass?'text':'password'} value=${pass} onChange=${e=>setPass(e.target.value)} placeholder="كلمة المرور" style=${{width:'100%',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:10,padding:10,marginBottom:12}}/>
-  <div style=${{display:'flex',gap:8,justifyContent:'center'}}>
-   <button class="btn" onClick=${()=>pass==='admin'?setOk(true):alert('كلمة المرور غير صحيحة')}>دخول</button>
-   <button class="btn ghost" onClick=${()=>setShowPass(!showPass)}>${showPass?'إخفاء':'إظهار'}</button>
-  </div>
-  <p style=${{color:'#e6d96a',fontSize:11,marginTop:15}}>كلمة المرور الافتراضية admin تجريبية فقط. غيّر نظام الدخول قبل نشر لوحة الإدارة.</p>
- </div>`;
-
- return html`
- <div>
-  <div style=${{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-   <h2>لوحة الإدارة</h2>
-   <button class="btn ghost" onClick=${onClose}>رجوع</button>
-  </div>
-
-  <div class="panel">
-   <h2 style=${{marginTop:0}}>${editing?'تعديل مباراة':'إضافة مباراة يدوياً'}</h2>
-   <div class="form">
-    <label>الفريق الأول
-     <input value=${form.h} onChange=${e=>setForm(f=>({...f,h:e.target.value}))} placeholder="اسم الفريق الأول"/>
-    </label>
-    <label>الفريق الثاني
-     <input value=${form.a} onChange=${e=>setForm(f=>({...f,a:e.target.value}))} placeholder="اسم الفريق الثاني"/>
-    </label>
-    <label>البطولة
-     <select value=${form.lg} onChange=${e=>setForm(f=>({...f,lg:e.target.value}))}>
-      ${LEAGUES.map(l=>html`<option value=${l.k}>${l.ar}</option>`)}
-     </select>
-    </label>
-    <label>القناة الناقلة
-     <select value=${form.channel||''} onChange=${e=>setForm(f=>({...f,channel:e.target.value}))}>
-      <option value="">لم يتم التحديد</option>
-      ${CHANNELS.map(c=>html`<option value=${c.id}>${c.name}</option>`)}
-     </select>
-    </label>
-    <label>حالة المباراة
-     <select value=${form.st} onChange=${e=>setForm(f=>({...f,st:e.target.value}))}>
-      <option value="upcoming">لم تبدأ</option>
-      <option value="live">مباشرة</option>
-      <option value="finished">انتهت</option>
-     </select>
-    </label>
-    <label>تاريخ ووقت المباراة
-     <input type="datetime-local" value=${new Date(form.t).toLocaleString('sv-SE',{timeZone:TZ}).slice(0,16)} onChange=${e=>setForm(f=>({...f,t:new Date(e.target.value).toISOString()}))}/>
-    </label>
-    <label>الملعب
-     <input value=${form.venue||''} onChange=${e=>setForm(f=>({...f,venue:e.target.value}))} placeholder="اسم الملعب"/>
-    </label>
-    <label>نتيجة الفريق الأول
-     <input type="number" min="0" value=${form.hs??0} onChange=${e=>setForm(f=>({...f,hs:+e.target.value}))}/>
-    </label>
-    <label>نتيجة الفريق الثاني
-     <input type="number" min="0" value=${form.as??0} onChange=${e=>setForm(f=>({...f,as:+e.target.value}))}/>
-    </label>
-   </div>
-
-   <div style=${{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}>
-    ${editing?html`
-     <button class="btn" onClick=${saveEdit}>حفظ التعديلات</button>
-     <button class="btn ghost" onClick=${()=>{setEditing('');setForm(blank())}}>إلغاء</button>
-    `:html`<button class="btn" onClick=${add}>إضافة المباراة</button>`}
-   </div>
-
-   <div class="panel">
-    <h2 style=${{marginTop:0}}>مصادر البث المرخّصة</h2>
-    <p style=${{color:'var(--mut)',fontSize:12}}>أضف فقط روابط البث التي تملك حق استخدامها أو نشرها.</p>
-    ${(form.sources||[]).map((s,i)=>html`
-     <div class="arow">
-      <span>${s.name} · ${s.type}</span>
-      <button class="btn del" onClick=${()=>setForm(f=>({...f,sources:f.sources.filter((x,j)=>j!==i)}))}>حذف</button>
-     </div>
-    `)}
-    <button class="btn ghost" style=${{marginTop:10}} onClick=${addSource}>إضافة مصدر</button>
-   </div>
-  </div>
-
-  <div class="panel">
-   <h2 style=${{marginTop:0}}>المباريات الموجودة (${ms.length})</h2>
-   ${ms.map(m=>html`
-    <div class="arow">
-     <div style=${{flex:1}}>
-      <b>${m.h} – ${m.a}</b>
-      <div style=${{fontSize:11,color:'var(--mut)'}}>${LN(m.lg).ar} · ${STAT[m.st]} · ${m.channel?CHANNELS.find(c=>c.id===m.channel)?.name||'':''}</div>
-     </div>
-     <button class="btn ghost" onClick=${()=>edit(m)}>تعديل</button>
-     <button class="btn del" onClick=${()=>remove(m.id)}>حذف</button>
-    </div>
-   `)}
-   ${!ms.length?html`<div class="empty">ما كايناش مباريات مضافة يدوياً</div>`:null}
-  </div>
- </div>`;
-}function App(){
- const page=useHash();
- const api=useApi();
- const[ms,setMs]=useState(load);
- const[filter,setFilter]=useState('all');
- const[query,setQuery]=useState('');
- const[adminOpen,setAdminOpen]=useState(false);
-
- const[srcMap,setSrc]=useState(()=>{
-  try{return JSON.parse(localStorage.getItem('koora-src-v1'))||{}}
-  catch(e){return{}}
- });
-
- const[channelMap,setChannelMap]=useState(()=>{
-  try{return JSON.parse(localStorage.getItem('koora-channel-v1'))||{}}
-  catch(e){return{}}
- });
-
- useEffect(()=>{
-  try{localStorage.setItem(KEY,JSON.stringify(ms))}catch(e){}
- },[ms]);
-
- useEffect(()=>{
-  try{localStorage.setItem('koora-src-v1',JSON.stringify(srcMap))}catch(e){}
- },[srcMap]);
-
- useEffect(()=>{
-  try{localStorage.setItem('koora-channel-v1',JSON.stringify(channelMap))}catch(e){}
- },[channelMap]);
-
- const isApi=api.state!=='off';
-
- const shown=isApi
-  ?api.ms.map(m=>({
-    ...m,
-    sources:srcMap[m.id]||[],
-    channel:channelMap[m.id]||''
-   }))
-  :ms;
-
- const setShown=fn=>{
-  if(isApi){
-   const updated=typeof fn==='function'?fn(shown):fn;
-   setSrc(Object.fromEntries(updated.map(m=>[m.id,m.sources||[]])));
-   setChannelMap(Object.fromEntries(
-    updated.filter(m=>m.channel).map(m=>[m.id,m.channel])
-   ));
-  }else{
-   setMs(fn);
-  }
- };
-
- const selected=page.startsWith('match-')
-  ?shown.find(m=>String(m.id)===page.slice(6))
-  :null;
-
- const league=page.startsWith('league-')
-  ?page.slice(7)
-  :null;
-
- const nav=(p)=>{
-  location.hash=p;
-  setAdminOpen(false);
- };
-
- return html`
- <header>
-  <div class="wrap">
-   <div class="top">
-    <a class="logo" href="#home">
-     <i>⚽</i><span>KOORA <b>MAX</b></span>
-    </a>
-    <div class="search">
-     <span>⌕</span>
-     <input value=${query} onChange=${e=>setQuery(e.target.value)} placeholder="ابحث عن فريق أو بطولة..."/>
-    </div>
-   </div>
-   <nav>
-    <a href="#home" class=${page==='home'?'on':''}>الرئيسية</a>
-    <a href="#leagues" class=${page==='leagues'?'on':''}>البطولات</a>
-    <a href="#admin" class=${page==='admin'?'on':''}>الإدارة</a>
-   </nav>
-  </div>
- </header>
-
- <div class="demo">
-  ${api.state==='loading'?'جاري تحميل المباريات...':
-    api.state==='error'?'تعذر جلب المباريات من الخادم حالياً':
-    isApi?'المباريات من خدمة النتائج':'وضع المباريات اليدوي'}
- </div>
-
- <main class="wrap" style=${{minHeight:'65vh',paddingTop:8}}>
-  ${page==='home'?html`
-   <${Home}
-    ms=${shown}
-    filter=${filter}
-    setFilter=${setFilter}
-    query=${query}
-   />
-  `:null}
-
-  ${page==='leagues'?html`<${Leagues}/>`:null}
-
-  ${league?html`<${LeaguePage} lg=${league} ms=${shown}/>`:null}
-
-  ${page.startsWith('match-')?html`<${MatchPage} m=${selected}/>`:null}
-
-  ${page==='admin'?html`
-   <${Admin}
-    ms=${shown}
-    setMs=${setShown}
-    isApi=${isApi}
-    onClose=${()=>nav('home')}
-   />
-  `:null}
-
-  ${!['home','leagues','admin'].includes(page)&&!page.startsWith('match-')&&!league?html`
-   <div class="empty">الصفحة غير موجودة</div>
-  `:null}
- </main>
-
- <footer>
-  <div class="wrap">
-   <div class="logo" style=${{justifyContent:'center',marginBottom:8}}>
-    <i>⚽</i><span>KOORA <b>MAX</b></span>
-   </div>
-   <p>KOORA MAX – موقع لمتابعة مواعيد ونتائج مباريات كرة القدم.</p>
-   <p style=${{marginTop:6}}>روابط المشاهدة توجه إلى المصادر الرسمية والمرخّصة.</p>
-   <p style=${{marginTop:10}}>© ${new Date().getFullYear()} KOORA MAX</p>
-  </div>
- </footer>
- `;
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(
- React.createElement(App)
-);
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App}/>`);
 </script>
 </body>
 </html>
