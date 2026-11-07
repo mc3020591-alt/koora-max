@@ -83,14 +83,32 @@ function useApi(){
  const[s,setS]=useState({state:CFG.apiUrl?'loading':'off',ms:[]});
  useEffect(()=>{if(!CFG.apiUrl)return;let dead=false;
   const run=()=>fetch(CFG.apiUrl+'?from='+dayK(new Date())+'&days=3').then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{if(dead)return;
-   const ms=(j.matches||[]).filter(x=>LEAGUES.some(l=>l.k===x.competition)).map(x=>({id:String(x.id),lg:x.competition,h:x.home,a:x.away,t:x.kickoff,st:mapSt(x.status),hs:x.homeScore??0,as:x.awayScore??0,venue:x.venue||'',sources:(x.sources||[]).filter(z=>/^https:\/\//.test(z.url))}));
+   const arr=Array.isArray(j)?j:(j.matches||[]);
+   const iso=v=>typeof v==='number'?new Date(v<1e12?v*1000:v).toISOString():v;
+   const ms=arr.map(x=>({id:String(x.id),lg:lgk(x.lg),h:x.h,a:x.a,t:iso(x.t),st:mapSt(x.st),min:x.min,hs:x.hs??0,as:x.as??0,venue:x.venue||'',hl:x.hl,al:x.al,sources:[]}));
    setS({state:'ok',ms})}).catch(()=>!dead&&setS({state:'error',ms:[]}));
   run();const i=setInterval(run,6e4);return()=>{dead=true;clearInterval(i)}},[]);
  return s}
 const fmtT=i=>new Date(i).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
 const dayK=i=>new Date(i).toLocaleDateString('en-CA',{timeZone:TZ});
 const fmtD=i=>new Date(i).toLocaleDateString('ar-MA-u-nu-latn',{weekday:'long',day:'numeric',month:'long',timeZone:TZ});
-const LEAGUES=[{k:'PL',ar:'الدوري الإنجليزي الممتاز',en:'Premier League'},{k:'PD',ar:'الدوري الإسباني',en:'La Liga'},{k:'SA',ar:'الدوري الإيطالي',en:'Serie A'},{k:'BL1',ar:'الدوري الألماني',en:'Bundesliga'},{k:'FL1',ar:'الدوري الفرنسي',en:'Ligue 1'},{k:'CL',ar:'دوري أبطال أوروبا',en:'UEFA Champions League'},{k:'BOT',ar:'البطولة المغربية',en:'Botola Pro'},{k:'SPL',ar:'الدوري السعودي',en:'Saudi Pro League'},{k:'ALG',ar:'الدوري الجزائري',en:'Algeria Ligue 1'},{k:'TUN',ar:'الدوري التونسي',en:'Tunisia Ligue 1'},{k:'EGY',ar:'الدوري المصري',en:'Egyptian Premier League'},{k:'CAF',ar:'دوري أبطال إفريقيا',en:'CAF Champions League'}];
+const LEAGUES=[
+{k:'PL',ar:'الدوري الإنجليزي',en:'Premier League',al:['english premier league','epl','الدوري الإنجليزي الممتاز','البريميرليغ']},
+{k:'PD',ar:'الدوري الإسباني',en:'La Liga',al:['laliga','primera division','الليغا']},
+{k:'SA',ar:'الدوري الإيطالي',en:'Serie A',al:['سيري آ']},
+{k:'BL1',ar:'الدوري الألماني',en:'Bundesliga',al:['البوندسليغا']},
+{k:'FL1',ar:'الدوري الفرنسي',en:'Ligue 1',al:['ligue1','french ligue 1']},
+{k:'CL',ar:'دوري أبطال أوروبا',en:'UEFA Champions League',al:['champions league']},
+{k:'BOT',ar:'الدوري المغربي',en:'Botola Pro',al:['botola','botola pro inwi','botola pro 1','البطولة المغربية','البطولة الاحترافية','البطولة الوطنية']},
+{k:'SPL',ar:'الدوري السعودي',en:'Saudi Pro League',al:['saudi league','روشن','دوري روشن السعودي']},
+{k:'ALG',ar:'الدوري الجزائري',en:'Algeria Ligue 1',al:['algerian ligue 1','algeria ligue professionnelle 1','الرابطة المحترفة الأولى']},
+{k:'TUN',ar:'الدوري التونسي',en:'Tunisia Ligue 1',al:['tunisian ligue 1','ligue professionnelle 1','الرابطة المحترفة التونسية']},
+{k:'EGY',ar:'الدوري المصري',en:'Egyptian Premier League',al:['egypt premier league','الدوري المصري الممتاز']},
+{k:'CAF',ar:'دوري أبطال إفريقيا',en:'CAF Champions League',al:['champions league caf','african champions league','دوري أبطال أفريقيا']}];
+const LGID={39:'PL',140:'PD',135:'SA',78:'BL1',61:'FL1',2:'CL',200:'BOT',307:'SPL',186:'ALG',202:'TUN',233:'EGY',12:'CAF'};
+const nz=v=>String(v==null?'':v).toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+function lgk(v){const t=nz(v);if(!t)return v;if(/^\d+$/.test(t)&&LGID[+t])return LGID[+t];
+ let best=null,bl=0;for(const l of LEAGUES)for(const a of [l.k,l.en,l.ar,...l.al]){const z=nz(a);if(z===t)return l.k;if(z.length>=5&&t.includes(z)&&z.length>bl){best=l.k;bl=z.length}}return best||v}
 const LN=k=>LEAGUES.find(l=>l.k===k)||{ar:k,en:k};
 const STAT={live:'مباشر',upcoming:'لم تبدأ',finished:'انتهت'};
 const col=n=>`hsl(${[...n].reduce((a,c)=>a*31+c.charCodeAt(0),7)%360} 55% 32%)`;
@@ -99,12 +117,12 @@ const seed=()=>[];
 const load=()=>{try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()};
 const useHash=()=>{const g=()=>location.hash.slice(1)||'home';const[h,s]=useState(g);useEffect(()=>{const f=()=>{s(g());window.scrollTo(0,0)};addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);return h};
 
-const Badge=({n})=>html`<div class="badge" style=${{background:col(n)}}>${n[0]}</div>`;
+const Badge=({n,img})=>html`<div class="badge" style=${{background:img?'#fff':col(n),overflow:'hidden'}}>${img?html`<img src=${img} alt=${n} loading="lazy" style=${{width:'80%',height:'80%',objectFit:'contain'}} onError=${e=>{e.target.style.display='none'}}/>`:n[0]}</div>`
 const Card=({m,i})=>html`<a class="card" href=${'#match-'+m.id} style=${{animationDelay:i*50+'ms'}}>
  <div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.demo&&html`<span class="tag">تجريبي</span>`}</span></div>
- <div class="row"><div class="team"><${Badge} n=${m.h}/>${m.h}</div>
- <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div><div class="st">توقيت المغرب</div>`:html`<div class="score">${m.hs} - ${m.as}</div><div class="st">${m.st==='live'?'جارية الآن':'نهائي'}</div>`}</div>
- <div class="team"><${Badge} n=${m.a}/>${m.a}</div></div></a>`;
+ <div class="row"><div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div>
+ <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div><div class="st">توقيت المغرب</div>`:html`<div class="score">${m.hs} - ${m.as}</div><div class="st">${m.st==='live'?(m.min?m.min+"'":'جارية الآن'):'نهائي'}</div>`}</div>
+ <div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div></div></a>`;
 const Section=({title,list})=>list.length?html`<h2>${title}</h2><div class="grid">${list.map((m,i)=>html`<${Card} key=${m.id} m=${m} i=${i}/>`)}</div>`:null;
 
 function Player({src}){
@@ -120,7 +138,7 @@ function MatchPage({m}){
  const src=m.sources[si]||m.sources[0];
  return html`<div style=${{paddingTop:18,animation:'up .5s both'}}>
  <div class="panel" style=${{marginTop:0}}><div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.demo&&html`<span class="tag">تجريبي</span>`}</span></div>
- <div class="row"><div class="team"><${Badge} n=${m.h}/>${m.h}</div><div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div><div class="team"><${Badge} n=${m.a}/>${m.a}</div></div></div>
+ <div class="row"><div class="team"><${Badge} n=${m.h} img=${m.hl}/>${m.h}</div><div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div><div class="team"><${Badge} n=${m.a} img=${m.al}/>${m.a}</div></div></div>
  <div style=${{marginTop:14}}><${Player} src=${src}/></div>
  ${m.sources.length>1&&html`<div class="srcs">${m.sources.map((s,i)=>html`<button key=${i} class=${'pill'+(i===si?' on':'')} onClick=${()=>setSi(i)}>${s.name}</button>`)}</div>`}
  <div class="panel"><h2 style=${{marginTop:0}}>معلومات المباراة</h2><div class="info">
