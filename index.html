@@ -70,30 +70,38 @@ footer{margin-top:50px;border-top:1px solid var(--line);padding:24px 0;color:var
 </head>
 <body>
 <div id="root"></div>
+<script>window.KOORA_CONFIG={apiUrl:"/api/matches"};</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.17/hls.min.js"></script>
 <script>
 const {useState,useEffect,useMemo,useRef}=React;const html=htm.bind(React.createElement);
-const TZ='Africa/Casablanca',KEY='koora-max-demo-v1';
+const TZ='Africa/Casablanca',KEY='koora-max-v3',CFG=window.KOORA_CONFIG||{};
+const mapSt=s=>/IN_PLAY|PAUSED|LIVE|1H|2H|HT|^ET$|^BT$|^P$/i.test(s||'')?'live':/FINISHED|FT|AET|PEN/i.test(s||'')?'finished':'upcoming';
+function useApi(){
+ const[s,setS]=useState({state:CFG.apiUrl?'loading':'off',ms:[]});
+ useEffect(()=>{if(!CFG.apiUrl)return;let dead=false;
+  const run=()=>fetch(CFG.apiUrl+'?from='+dayK(new Date())+'&days=3').then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{if(dead)return;
+   const ms=(j.matches||[]).filter(x=>LEAGUES.some(l=>l.k===x.competition)).map(x=>({id:String(x.id),lg:x.competition,h:x.home,a:x.away,t:x.kickoff,st:mapSt(x.status),hs:x.homeScore??0,as:x.awayScore??0,venue:x.venue||'',sources:(x.sources||[]).filter(z=>/^https:\/\//.test(z.url))}));
+   setS({state:'ok',ms})}).catch(()=>!dead&&setS({state:'error',ms:[]}));
+  run();const i=setInterval(run,6e4);return()=>{dead=true;clearInterval(i)}},[]);
+ return s}
 const fmtT=i=>new Date(i).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
 const dayK=i=>new Date(i).toLocaleDateString('en-CA',{timeZone:TZ});
 const fmtD=i=>new Date(i).toLocaleDateString('ar-MA-u-nu-latn',{weekday:'long',day:'numeric',month:'long',timeZone:TZ});
-const LEAGUES=['الدوري المغربي','دوري أبطال أوروبا','الدوري الإنجليزي','الدوري الإسباني','دوري أبطال إفريقيا'];
+const LEAGUES=[{k:'PL',ar:'الدوري الإنجليزي الممتاز',en:'Premier League'},{k:'PD',ar:'الدوري الإسباني',en:'La Liga'},{k:'SA',ar:'الدوري الإيطالي',en:'Serie A'},{k:'BL1',ar:'الدوري الألماني',en:'Bundesliga'},{k:'FL1',ar:'الدوري الفرنسي',en:'Ligue 1'},{k:'CL',ar:'دوري أبطال أوروبا',en:'UEFA Champions League'},{k:'BOT',ar:'البطولة المغربية',en:'Botola Pro'},{k:'SPL',ar:'الدوري السعودي',en:'Saudi Pro League'},{k:'ALG',ar:'الدوري الجزائري',en:'Algeria Ligue 1'},{k:'TUN',ar:'الدوري التونسي',en:'Tunisia Ligue 1'},{k:'EGY',ar:'الدوري المصري',en:'Egyptian Premier League'},{k:'CAF',ar:'دوري أبطال إفريقيا',en:'CAF Champions League'}];
+const LN=k=>LEAGUES.find(l=>l.k===k)||{ar:k,en:k};
 const STAT={live:'مباشر',upcoming:'لم تبدأ',finished:'انتهت'};
 const col=n=>`hsl(${[...n].reduce((a,c)=>a*31+c.charCodeAt(0),7)%360} 55% 32%)`;
-const mk=(id,lg,h,a,off,st,venue)=>({id,lg,h,a,t:new Date(Date.now()+off*6e4).toISOString(),st,hs:0,as:0,venue,sources:[]});
-const seed=()=>[mk('m1',LEAGUES[0],'الرجاء','الوداد',-35,'live','مركب محمد الخامس'),mk('m2',LEAGUES[2],'ليفربول','آرسنال',-60,'live','أنفيلد'),
-mk('m3',LEAGUES[0],'الجيش الملكي','نهضة بركان',90,'upcoming','مجمع الأمير مولاي عبد الله'),mk('m4',LEAGUES[3],'ريال مدريد','برشلونة',180,'upcoming','سانتياغو برنابيو'),
-mk('m5',LEAGUES[1],'باريس سان جيرمان','بايرن ميونيخ',300,'upcoming','حديقة الأمراء'),mk('m6',LEAGUES[4],'الأهلي','صن داونز',1500,'upcoming','ملعب القاهرة'),
-mk('m7',LEAGUES[2],'مانشستر سيتي','تشيلسي',-240,'finished','الاتحاد'),mk('m8',LEAGUES[3],'أتلتيكو مدريد','إشبيلية',2900,'upcoming','متروبوليتانو')];
+const mk=(id,lg,h,a,off,st,venue)=>({id,lg,h,a,t:new Date(Date.now()+off*6e4).toISOString(),st,hs:0,as:0,venue,sources:[],demo:true});
+const seed=()=>[];
 const load=()=>{try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()};
 const useHash=()=>{const g=()=>location.hash.slice(1)||'home';const[h,s]=useState(g);useEffect(()=>{const f=()=>{s(g());window.scrollTo(0,0)};addEventListener('hashchange',f);return()=>removeEventListener('hashchange',f)},[]);return h};
 
 const Badge=({n})=>html`<div class="badge" style=${{background:col(n)}}>${n[0]}</div>`;
 const Card=({m,i})=>html`<a class="card" href=${'#match-'+m.id} style=${{animationDelay:i*50+'ms'}}>
- <div class="meta"><span>${m.lg}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} <span class="tag">تجريبي</span></span></div>
+ <div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.demo&&html`<span class="tag">تجريبي</span>`}</span></div>
  <div class="row"><div class="team"><${Badge} n=${m.h}/>${m.h}</div>
  <div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div><div class="st">توقيت المغرب</div>`:html`<div class="score">${m.hs} - ${m.as}</div><div class="st">${m.st==='live'?'جارية الآن':'نهائي'}</div>`}</div>
  <div class="team"><${Badge} n=${m.a}/>${m.a}</div></div></a>`;
@@ -111,32 +119,32 @@ function MatchPage({m}){
  if(!m)return html`<div class="empty">المباراة غير موجودة. <a href="#home" style=${{color:'var(--g)'}}>العودة للرئيسية</a></div>`;
  const src=m.sources[si]||m.sources[0];
  return html`<div style=${{paddingTop:18,animation:'up .5s both'}}>
- <div class="panel" style=${{marginTop:0}}><div class="meta"><span>${m.lg}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]}</span></div>
+ <div class="panel" style=${{marginTop:0}}><div class="meta"><span>${LN(m.lg).ar}</span><span>${m.st==='live'?html`<span class="live">مباشر</span>`:STAT[m.st]} ${m.demo&&html`<span class="tag">تجريبي</span>`}</span></div>
  <div class="row"><div class="team"><${Badge} n=${m.h}/>${m.h}</div><div class="mid">${m.st==='upcoming'?html`<div class="time">${fmtT(m.t)}</div>`:html`<div class="score">${m.hs} - ${m.as}</div>`}</div><div class="team"><${Badge} n=${m.a}/>${m.a}</div></div></div>
  <div style=${{marginTop:14}}><${Player} src=${src}/></div>
  ${m.sources.length>1&&html`<div class="srcs">${m.sources.map((s,i)=>html`<button key=${i} class=${'pill'+(i===si?' on':'')} onClick=${()=>setSi(i)}>${s.name}</button>`)}</div>`}
  <div class="panel"><h2 style=${{marginTop:0}}>معلومات المباراة</h2><div class="info">
- <div><small>البطولة</small>${m.lg}</div><div><small>التاريخ</small>${fmtD(m.t)}</div><div><small>التوقيت (المغرب)</small>${fmtT(m.t)}</div><div><small>الملعب</small>${m.venue||'—'}</div><div><small>الحالة</small>${STAT[m.st]}</div></div>
- <p style=${{color:'var(--mut)',fontSize:12,marginTop:12}}>بيانات تجريبية للعرض فقط. لا تُعرض إلا مصادر بث مرخّصة يضيفها المشرف.</p></div></div>`;
+ <div><small>البطولة</small>${LN(m.lg).ar} · ${LN(m.lg).en}</div><div><small>التاريخ</small>${fmtD(m.t)}</div><div><small>التوقيت (المغرب)</small>${fmtT(m.t)}</div><div><small>الملعب</small>${m.venue||'—'}</div><div><small>الحالة</small>${STAT[m.st]}</div></div>
+ ${m.demo&&html`<p style=${{color:'var(--mut)',fontSize:12,marginTop:12}}>مباراة تجريبية للعرض فقط وليست حقيقية. لا تُعرض إلا مصادر بث مرخّصة.</p>`}</div></div>`;
 }
-function Home({ms,mode,q,lg,setLg}){
+function Home({ms,mode,q,lg,setLg,ok}){
  const today=dayK(new Date());
- let l=ms.filter(m=>(lg==='all'||m.lg===lg)&&(!q||(m.h+m.a+m.lg).includes(q))).sort((a,b)=>new Date(a.t)-new Date(b.t));
+ let l=ms.filter(m=>(lg==='all'||m.lg===lg)&&(!q||(m.h+m.a+LN(m.lg).ar+LN(m.lg).en).toLowerCase().includes(q.toLowerCase()))).sort((a,b)=>new Date(a.t)-new Date(b.t));
  if(mode==='live')l=l.filter(m=>m.st==='live');
  const live=l.filter(m=>m.st==='live'),td=l.filter(m=>m.st==='upcoming'&&dayK(m.t)===today),up=l.filter(m=>m.st==='upcoming'&&dayK(m.t)>today),fin=l.filter(m=>m.st==='finished');
  return html`<div>
  ${mode==='home'&&!q&&html`<div class="hero"><h1>تابع كل المباريات على <b>KOORA MAX</b></h1><p>جدول المباريات بتوقيت المغرب • نتائج • صفحات مباريات مخصصة</p></div>`}
- <div class="pills">${['all',...LEAGUES].map(x=>html`<button key=${x} class=${'pill'+(lg===x?' on':'')} onClick=${()=>setLg(x)}>${x==='all'?'كل البطولات':x}</button>`)}</div>
+ <div class="pills">${[{k:'all',ar:'كل البطولات'},...LEAGUES].map(x=>html`<button key=${x.k} title=${x.en} class=${'pill'+(lg===x.k?' on':'')} onClick=${()=>setLg(x.k)}>${x.ar}</button>`)}</div>
  ${q&&html`<p style=${{color:'var(--mut)',marginTop:8}}>نتائج البحث عن «${q}»: ${l.length}</p>`}
  <${Section} title="مباريات مباشرة" list=${live}/>
  ${mode!=='live'&&html`<${Section} title="مباريات اليوم" list=${td}/><${Section} title="المباريات القادمة" list=${up}/><${Section} title="انتهت" list=${fin}/>`}
- ${!l.length&&html`<div class="empty">لا توجد مباريات مطابقة</div>`}</div>`;
+ ${!l.length&&html`<div class="empty">${!ok?'المباريات المباشرة والنتائج الحقيقية تظهر فقط عند الاتصال بمزوّد بيانات موثّق':'لا توجد مباريات مطابقة'}</div>`}</div>`;
 }
-function Leagues({setLg}){return html`<div><h2>البطولات</h2><div class="lg">${LEAGUES.map(x=>html`<a key=${x} class="card" href="#home" onClick=${()=>setLg(x)}>🏆<br/>${x}</a>`)}</div></div>`}
+function Leagues({setLg}){return html`<div><h2>البطولات</h2><div class="lg">${LEAGUES.map(x=>html`<a key=${x.k} class="card" href="#home" onClick=${()=>setLg(x.k)}>🏆<br/>${x.ar}<br/><small style=${{color:'var(--mut)'}}>${x.en}</small></a>`)}</div></div>`}
 
 const toIn=i=>{const p=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:TZ,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).formatToParts(new Date(i)).map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`};
 const fromIn=s=>{const d=new Date(s+':00Z'),w=new Date(toIn(d)+':00Z');return new Date(d-(w-d)).toISOString()};
-function Admin({ms,setMs}){
+function Admin({ms,setMs,api}){
  const[ok,setOk]=useState(false),[pw,setPw]=useState(''),[sel,setSel]=useState(null),[ns,setNs]=useState({name:'',url:'',type:'hls'});
  if(!ok)return html`<div class="panel" style=${{maxWidth:360,margin:'30px auto'}}><h2 style=${{marginTop:0}}>دخول المشرف</h2>
   <div class="form"><label>كلمة المرور (تجريبية: admin)<input type="password" value=${pw} onInput=${e=>setPw(e.target.value)}/></label></div>
@@ -145,12 +153,14 @@ function Admin({ms,setMs}){
  const upd=(id,p)=>setMs(ms.map(m=>m.id===id?{...m,...p}:m));
  const m=ms.find(x=>x.id===sel);
  return html`<div><h2>لوحة التحكم</h2>
- <button class="btn" onClick=${()=>{const n=mk('m'+Date.now(),LEAGUES[0],'فريق أ','فريق ب',120,'upcoming','');setMs([n,...ms]);setSel(n.id)}}>＋ إضافة مباراة</button>
- <button class="btn ghost" style=${{marginInlineStart:8}} onClick=${()=>{setMs(seed());setSel(null)}}>إعادة البيانات التجريبية</button>
+ <div class="panel" style=${{marginTop:0}}><b>مصدر البيانات:</b> ${api.state==='ok'?'متصل بمزوّد موثّق':api.state==='off'?'غير متصل (وضع تجريبي)':api.state==='loading'?'جارٍ الاتصال':'خطأ في الاتصال'}
+ <p style=${{color:'var(--mut)',fontSize:13,margin:'8px 0'}}>المباريات تُجلب من /api/matches (دالة Netlify تحفظ مفتاح API على الخادم ولا يصل للمتصفح). روابط البث المرخّصة تُحفظ في هذا المتصفح فقط؛ للإنتاج خزّنها في قاعدة بيانات.</p></div>
+ ${api.state==='off'&&html`<button class="btn" onClick=${()=>{const n=mk('m'+Date.now(),'BOT','فريق أ','فريق ب',120,'upcoming','');setMs([n,...ms]);setSel(n.id)}}>＋ إضافة مباراة</button>`}
+
  ${m&&html`<div class="panel"><div class="form">
   <label>الفريق المضيف<input value=${m.h} onInput=${e=>upd(m.id,{h:e.target.value})}/></label>
   <label>الفريق الضيف<input value=${m.a} onInput=${e=>upd(m.id,{a:e.target.value})}/></label>
-  <label>البطولة<select value=${m.lg} onChange=${e=>upd(m.id,{lg:e.target.value})}>${LEAGUES.map(x=>html`<option key=${x}>${x}</option>`)}</select></label>
+  <label>البطولة<select value=${m.lg} onChange=${e=>upd(m.id,{lg:e.target.value})}>${LEAGUES.map(x=>html`<option key=${x.k} value=${x.k}>${x.ar}</option>`)}</select></label>
   <label>الحالة<select value=${m.st} onChange=${e=>upd(m.id,{st:e.target.value})}>${Object.entries(STAT).map(([k,v])=>html`<option key=${k} value=${k}>${v}</option>`)}</select></label>
   <label>موعد البداية (توقيت المغرب)<input type="datetime-local" value=${toIn(m.t)} onChange=${e=>e.target.value&&upd(m.id,{t:fromIn(e.target.value)})}/></label>
   <label>الملعب<input value=${m.venue} onInput=${e=>upd(m.id,{venue:e.target.value})}/></label>
@@ -164,20 +174,24 @@ function Admin({ms,setMs}){
   <p style=${{color:'var(--mut)',fontSize:12,marginBottom:8}}>أضف فقط روابط تملك ترخيصاً قانونياً لعرضها.</p>
   <button class="btn" onClick=${()=>{if(ns.name&&/^https:\/\//.test(ns.url)){upd(m.id,{sources:[...m.sources,ns]});setNs({name:'',url:'',type:'hls'})}}}>إضافة مصدر</button>
   <button class="btn del" style=${{marginInlineStart:8}} onClick=${()=>{setMs(ms.filter(x=>x.id!==m.id));setSel(null)}}>حذف المباراة</button></div>`}
- <div class="panel">${ms.map(x=>html`<div class="arow" key=${x.id} onClick=${()=>setSel(x.id)}><span>${x.h} × ${x.a}</span><small style=${{color:'var(--mut)'}}>${x.lg} • ${fmtT(x.t)} • ${STAT[x.st]} • ${x.sources.length} مصدر</small></div>`)}</div></div>`;
+ <div class="panel">${ms.map(x=>html`<div class="arow" key=${x.id} onClick=${()=>setSel(x.id)}><span>${x.h} × ${x.a}</span><small style=${{color:'var(--mut)'}}>${LN(x.lg).ar} • ${fmtT(x.t)} • ${STAT[x.st]} • ${x.sources.length} مصدر</small></div>`)}</div></div>`;
 }
 function App(){
- const h=useHash(),[ms,setMs]=useState(load),[q,setQ]=useState(''),[lg,setLg]=useState('all');
+ const h=useHash(),[ms,setMs]=useState(load),[q,setQ]=useState(''),[lg,setLg]=useState('all'),api=useApi();
+ const[srcMap,setSrc]=useState(()=>{try{return JSON.parse(localStorage.getItem('koora-src-v1'))||{}}catch(e){return{}}});
+ useEffect(()=>{try{localStorage.setItem('koora-src-v1',JSON.stringify(srcMap))}catch(e){}},[srcMap]);
+ const isApi=api.state!=='off';
+ const shown=isApi?api.ms.map(m=>({...m,sources:srcMap[m.id]||[]})):ms;
  useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(ms))}catch(e){}},[ms]);
  const nav=[['home','الرئيسية'],['live','مباشر'],['schedule','جدول المباريات'],['leagues','البطولات'],['admin','الإدارة']];
  const cur=h.startsWith('match-')?'':h;
  let page;
- if(h.startsWith('match-'))page=html`<${MatchPage} m=${ms.find(m=>m.id===h.slice(6))}/>`;
+ if(h.startsWith('match-'))page=html`<${MatchPage} m=${shown.find(m=>m.id===h.slice(6))}/>`;
  else if(h==='leagues')page=html`<${Leagues} setLg=${setLg}/>`;
- else if(h==='admin')page=html`<${Admin} ms=${ms} setMs=${setMs}/>`;
- else page=html`<${Home} ms=${ms} mode=${h==='live'?'live':h==='schedule'?'schedule':'home'} q=${q} lg=${lg} setLg=${setLg}/>`;
+ else if(h==='admin')page=html`<${Admin} ms=${isApi?shown:ms} setMs=${isApi?(l=>setSrc(Object.fromEntries(l.map(m=>[m.id,m.sources])))):setMs} api=${api}/>`;
+ else page=html`<${Home} ok=${api.state==='ok'} ms=${shown} mode=${h==='live'?'live':h==='schedule'?'schedule':'home'} q=${q} lg=${lg} setLg=${setLg}/>`;
  return html`<div>
- <div class="demo">⚠ بيانات تجريبية للعرض فقط — المباريات والنتائج ليست حقيقية ولا توجد روابط بث افتراضية</div>
+ ${api.state==='ok'?html`<div class="demo" style=${{background:'#06210f',color:'#6ee79a',borderColor:'#0f3d22'}}>✓ بيانات حقيقية من مزوّد موثّق • التوقيت: المغرب</div>`:html`<div class="demo">${api.state==='off'?'⚠ غير متصل بمزوّد بيانات — لا تُعرض أي مباريات حتى يتم ربط الـ API':api.state==='loading'?'جارٍ الاتصال بمصدر البيانات...':'⚠ تعذّر الاتصال بمصدر البيانات — لا تُعرض مباريات'}</div>`}
  <header><div class="wrap"><div class="top"><a class="logo" href="#home"><i>⚽</i>KOORA <b>MAX</b></a>
   <div class="search"><span>🔍</span><input placeholder="ابحث عن فريق أو مباراة..." value=${q} onInput=${e=>{setQ(e.target.value);if(h!=='home'&&h!=='live'&&h!=='schedule')location.hash='home'}}/></div></div>
   <nav>${nav.map(([k,t])=>html`<a key=${k} href=${'#'+k} class=${cur===k?'on':''}>${t}</a>`)}</nav></div></header>
