@@ -78,7 +78,12 @@ footer{margin-top:50px;border-top:1px solid var(--line);padding:24px 0;color:var
 <script>
 const {useState,useEffect,useMemo,useRef}=React;const html=htm.bind(React.createElement);
 const TZ='Africa/Casablanca',KEY='koora-max-v3',CFG=window.KOORA_CONFIG||{};
-const mapSt=s=>/IN_PLAY|PAUSED|LIVE|1H|2H|HT|^ET$|^BT$|^P$/i.test(s||'')?'live':/FINISHED|FT|AET|PEN/i.test(s||'')?'finished':'upcoming';
+const mapSt=s=>{
+ const v=String(s||'').trim().toUpperCase();
+ if(['LIVE','1H','2H','HT','ET','BT','P','INT','SUSP','IN_PLAY','PAUSED'].includes(v))return 'live';
+ if(['FT','AET','PEN','FINISHED'].includes(v))return 'finished';
+ return 'upcoming';
+};
 function useApi(){
  const[s,setS]=useState({state:CFG.apiUrl?'loading':'off',ms:[]});
  useEffect(()=>{if(!CFG.apiUrl)return;let dead=false;
